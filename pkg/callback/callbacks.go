@@ -220,21 +220,28 @@ func (h AuthenticateHandler) Handle(cb Callback) (bool, error) {
 
 // RegisterHandler handles the callback received from the Register Thing tree node.
 type RegisterHandler struct {
-	Audience     string
-	ThingID      string
-	ThingType    ThingType
-	KeyID        string
-	Key          crypto.Signer
-	Certificates []*x509.Certificate
-	Claims       func() interface{}
+	Audience          string
+	ThingID           string
+	ThingType         ThingType
+	KeyID             string
+	Key               crypto.Signer
+	Certificates      []*x509.Certificate
+	Claims            func() interface{}
+	SoftwareStatement string
 }
 
 func (h RegisterHandler) Handle(cb Callback) (bool, error) {
-	if cb.ID() != "jwt-pop-registration" {
+	jwtPoPReg := cb.ID() == "jwt-pop-registration"
+	softwareStatement := cb.ID() == "software_statement"
+	if !jwtPoPReg && !softwareStatement {
 		return false, nil
 	}
 	if len(cb.Input) == 0 {
 		return true, errNoInput
+	}
+	if softwareStatement {
+		cb.Input[0].Value = h.SoftwareStatement
+		return true, nil
 	}
 	var challenge string
 	for _, e := range cb.Output {
