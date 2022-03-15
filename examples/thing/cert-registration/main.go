@@ -24,12 +24,11 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 
 	"github.com/ForgeRock/iot-edge/examples/secrets"
 	"github.com/ForgeRock/iot-edge/v7/pkg/builder"
-	"github.com/ForgeRock/iot-edge/v7/pkg/callback"
-	"gopkg.in/square/go-jose.v2"
-	"gopkg.in/square/go-jose.v2/jwt"
+	"github.com/ForgeRock/iot-edge/v7/pkg/thing"
 )
 
 func decodePrivateKey(key string) (crypto.Signer, error) {
@@ -57,13 +56,13 @@ func decodeCertificates(certs string) ([]*x509.Certificate, error) {
 // A successful initialisation means that the Thing has successfully registered and authenticated with AM.
 func certRegThing() (err error) {
 	var (
-		urlString = flag.String("url", "http://am.localtest.me:8080/am", "URL of AM or Gateway")
-		realm     = flag.String("realm", "/", "AM Realm")
-		audience  = flag.String("audience", "/", "JWT audience")
-		authTree  = flag.String("tree", "iot-tree", "Authentication tree")
-		thingName = flag.String("name", "dynamic-thing", "Thing name")
-		//key         = flag.String("key", "", "The Thing's key in PEM format")
-		//cert        = flag.String("cert", "", "The Thing's certificate in PEM format")
+		urlString   = flag.String("url", "http://am.localtest.me:8080/am", "URL of AM or Gateway")
+		realm       = flag.String("realm", "/", "AM Realm")
+		audience    = flag.String("audience", "/", "JWT audience")
+		authTree    = flag.String("tree", "iot-tree", "Authentication tree")
+		thingName   = flag.String("name", "dynamic-thing", "Thing name")
+		key         = flag.String("key", "", "The Thing's key in PEM format")
+		cert        = flag.String("cert", "", "The Thing's certificate in PEM format")
 		secretStore = flag.String("secrets", "", "Path to pre-created secret store")
 	)
 	flag.Parse()
@@ -74,35 +73,30 @@ func certRegThing() (err error) {
 	}
 
 	var signer crypto.Signer
-	//var certs []*x509.Certificate
-	//if *key != "" && *cert != "" {
-	//	signer, err = decodePrivateKey(*key)
-	//	if err != nil {
-	//		return err
-	//	}
-	//	certs, err = decodeCertificates(*cert)
-	//	if err != nil {
-	//		return err
-	//	}
-	//} else {
-	store := secrets.Store{Path: *secretStore}
-	signer, err = store.Signer(*thingName)
-	if err != nil {
-		return err
+	var certs []*x509.Certificate
+	if *key != "" && *cert != "" {
+		signer, err = decodePrivateKey(*key)
+		if err != nil {
+			return err
+		}
+		certs, err = decodeCertificates(*cert)
+		if err != nil {
+			return err
+		}
+	} else {
+		store := secrets.Store{Path: *secretStore}
+		signer, err = store.Signer(*thingName)
+		if err != nil {
+			return err
+		}
+		certs, err = store.Certificates(*thingName)
+		if err != nil {
+			return err
+		}
 	}
-	//	certs, err = store.Certificates(*thingName)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
 
 	// use key thumbprint as key id
-	//keyID, err := thing.JWKThumbprint(signer)
-	//if err != nil {
-	//	return err
-	//}
-
-	ss, err := softwareStatement(signer, "https://software.pub.example.com", *thingName, "")
+	keyID, err := thing.JWKThumbprint(signer)
 	if err != nil {
 		return err
 	}
@@ -111,9 +105,8 @@ func certRegThing() (err error) {
 		ConnectTo(u).
 		InRealm(*realm).
 		WithTree(*authTree).
-		AuthenticateThing(*thingName, *audience, *thingName, signer, nil).
-		HandleCallbacksWith(callback.RegisterHandler{SoftwareStatement: ss})
-	//RegisterThing(certs, nil)
+		AuthenticateThing(*thingName, *audience, keyID, signer, nil).
+		RegisterThing(certs, nil)
 
 	fmt.Printf("Creating Thing %s... ", *thingName)
 	device, err := builder.Create()
@@ -147,45 +140,9 @@ func certRegThing() (err error) {
 	return nil
 }
 
-func softwareStatement(key crypto.Signer, iss, name, aud string) (string, error) {
-	opts := &jose.SignerOptions{}
-	opts.WithHeader("alg", "ES256")
-	opts.WithHeader("kid", name)
-	sig, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: key}, opts)
-	if err != nil {
-		return "", err
-	}
-	keySet := jose.JSONWebKeySet{
-		Keys: []jose.JSONWebKey{{KeyID: name, Key: key.Public(), Algorithm: string(jose.ES256), Use: "sig"}},
-	}
-	keyJSON, err := keySet.Keys[0].MarshalJSON()
-	if err != nil {
-		return "", err
-	}
-	println(string(keyJSON))
-	jwtBuilder := jwt.Signed(sig).Claims(struct {
-		Issuer     string             `json:"iss"`
-		Sub        string             `json:"sub"`
-		Aud        string             `json:"aud,omitempty"`
-		SoftwareID string             `json:"software_id,omitempty"`
-		JWKS       jose.JSONWebKeySet `json:"jwks"`
-	}{
-		Issuer:     iss,
-		Sub:        name,
-		Aud:        aud,
-		SoftwareID: name,
-		JWKS:       keySet,
-	})
-	response, err := jwtBuilder.CompactSerialize()
-	if err != nil {
-		return "", err
-	}
-	return response, err
-}
-
 func main() {
 	// pipe debug to standard out
-	//thing.DebugLogger().SetOutput(os.Stdout)
+	thing.DebugLogger().SetOutput(os.Stdout)
 
 	if err := certRegThing(); err != nil {
 		log.Fatal(err)
