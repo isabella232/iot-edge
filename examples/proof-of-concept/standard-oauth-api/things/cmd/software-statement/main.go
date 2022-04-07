@@ -41,7 +41,6 @@ func softwareStatement(key crypto.Signer, clientJWK jose.JSONWebKey, keyID, iss,
 	}
 	jwtBuilder := jwt.Signed(signer).Claims(struct {
 		Issuer       string             `json:"iss"`
-		Sub          string             `json:"sub"`
 		SoftwareID   string             `json:"software_id"`
 		RedirectURIs []string           `json:"redirect_uris"`
 		GrantTypes   []string           `json:"grant_types"`
@@ -49,7 +48,6 @@ func softwareStatement(key crypto.Signer, clientJWK jose.JSONWebKey, keyID, iss,
 		JWKS         jose.JSONWebKeySet `json:"jwks"`
 	}{
 		Issuer:       iss,
-		Sub:          clientName,
 		SoftwareID:   clientName,
 		RedirectURIs: []string{"https://client.example.com:8443/callback"},
 		GrantTypes:   []string{"client_credentials", "urn:ietf:params:oauth:grant-type:device_code", "refresh_token"},

@@ -298,11 +298,21 @@ func (h RegisterHandler) Handle(cb Callback) (bool, error) {
 	claims := baseJWTClaims(h.ThingID, h.Audience)
 	claims.Nonce = challenge
 	claims.ThingType = h.ThingType
-	claims.CNF.JWK = &jose.JSONWebKey{
-		Key:          h.Key.Public(),
-		Certificates: h.Certificates,
-		KeyID:        h.KeyID,
-		Use:          "sig",
+	if h.Certificates != nil {
+		claims.CNF.JWK = &jose.JSONWebKey{
+			Key:          h.Key.Public(),
+			Certificates: h.Certificates,
+			KeyID:        h.KeyID,
+			Use:          "sig",
+		}
+	} else if h.SoftwareStatement != "" {
+		claims.CNF.KID = h.KeyID
+	} else {
+		claims.CNF.JWK = &jose.JSONWebKey{
+			Key:          h.Key.Public(),
+			KeyID:        h.KeyID,
+			Use:          "sig",
+		}
 	}
 	claims.CNF.KID = h.KeyID
 	builder := jwt.Signed(sig).Claims(claims)

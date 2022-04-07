@@ -20,7 +20,7 @@ set -e
 function oauthRegister() {
   # Standard OAuth 2.0 dynamic client registration request
   echo $(curl --silent \
-  --request POST "http://$FQDN/am/oauth2/realms/root/register" \
+  --request POST "$AM_URL/oauth2/realms/root/register" \
   --header "Content-Type: application/json" \
   --data "{ \"software_statement\": \"$1\"}")
 }
@@ -28,7 +28,7 @@ function oauthRegister() {
 function oauthToken() {
   # Standard OAuth 2.0 access token request
   echo $(curl --silent \
-  --request POST "http://$FQDN/am/oauth2/realms/root/access_token" \
+  --request POST "$AM_URL/oauth2/realms/root/access_token" \
   --data "grant_type=client_credentials" \
   --data "client_assertion_type=urn%3Aietf%3Aparams%3Aoauth%3Aclient-assertion-type%3Ajwt-bearer" \
   --data "client_assertion=$1" \
@@ -38,7 +38,7 @@ function oauthToken() {
 function thingsRegister() {
   # Request to register the thing by using a software statement
   regResponse=$(curl --silent \
-  --request POST "http://$FQDN/am/json/authenticate?authIndexType=service&authIndexValue=oauth2-reg-tree" \
+  --request POST "$AM_URL/json/authenticate?authIndexType=service&authIndexValue=oauth2-reg-tree" \
   --header "Content-Type: application/json" \
   --header "Accept-API-Version: resource=2.0, protocol=1.0" \
   --data-raw "{
@@ -63,7 +63,7 @@ function thingsRegister() {
 
   # Request the things attributes using the SSO token
   echo $(curl --silent \
-  --request GET "http://$FQDN/am/json/things/*" \
+  --request GET "$AM_URL/json/things/*" \
   --header "Accept-API-Version: protocol=2.0,resource=1.0" \
   --header "Content-Type: application/json" \
   --header "Cookie: iPlanetDirectoryPro=${ssoToken}")
@@ -72,7 +72,7 @@ function thingsRegister() {
 function thingsToken() {
   # Request to authenticate the thing by using a bearer JWT
   authResponse=$(curl --silent \
-  --request POST "http://$FQDN/am/json/authenticate?authIndexType=service&authIndexValue=oauth2-auth-tree" \
+  --request POST "$AM_URL/json/authenticate?authIndexType=service&authIndexValue=oauth2-auth-tree" \
   --header "Content-Type: application/json" \
   --header "Accept-API-Version: resource=2.0, protocol=1.0" \
   --data-raw "{
@@ -97,7 +97,7 @@ function thingsToken() {
 
   # Request the access token via the things endpoint
   echo $(curl --silent \
-  --request POST "http://$FQDN/am/json/things/*?_action=get_access_token" \
+  --request POST "$AM_URL/json/things/*?_action=get_access_token" \
   --header "Accept-API-Version: protocol=2.0,resource=1.0" \
   --header "Content-Type: application/json" \
   --header "Cookie: iPlanetDirectoryPro=${ssoToken}" \
@@ -106,10 +106,10 @@ function thingsToken() {
   }')
 }
 
-FQDN=
+AM_URL=
 if [ -n "$1" ]; then
-  FQDN=$1
-  echo "Setting FQDN: $FQDN"
+  AM_URL=$1
+  echo "Setting AM_URL: $AM_URL"
 fi
 
 # Register the thing and build the bearer JWT
@@ -131,12 +131,12 @@ echo "Things Registration response:"
 echo $thingsRegisterResponse
 thingsClientID=$(jq -r '._id' <(echo $thingsRegisterResponse))
 
-oauthClientAssertion=$(go run ./cmd/jwt-bearer-token -fqdn $FQDN -clientID $oauthClientID)
+oauthClientAssertion=$(go run ./cmd/jwt-bearer-token -amurl $AM_URL -clientID $oauthClientID)
 echo "---"
 echo "OAuth 2.0 client assertion:"
 echo $oauthClientAssertion
 
-thingsClientAssertion=$(go run ./cmd/jwt-bearer-token -fqdn $FQDN -clientID $thingsClientID)
+thingsClientAssertion=$(go run ./cmd/jwt-bearer-token -amurl $AM_URL -clientID $thingsClientID)
 echo "---"
 echo "Things client assertion:"
 echo $thingsClientAssertion

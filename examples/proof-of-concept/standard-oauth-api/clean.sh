@@ -2,7 +2,7 @@
 set -e
 
 #
-# Copyright 2021 ForgeRock AS
+# Copyright 2022 ForgeRock AS
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,5 @@ set -e
 
 FORGEOPS_DIR=$(PWD)/tmp/forgeops
 
-cd "$FORGEOPS_DIR"
-skaffold delete
-kubectl delete pvc --all
+cd "$FORGEOPS_DIR"/bin
+./forgeops delete -y -f --namespace $NAMESPACE

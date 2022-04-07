@@ -29,6 +29,8 @@ import (
 	"gopkg.in/square/go-jose.v2/jwt"
 )
 
+// TODO issuer and subject may be different. Issuer must be the ID of the thing and subject must be the client_id of
+// the OAuth client. If dynamic registration resulted in a generated client_id then these might not have the same values.
 func jwtBearerToken(key crypto.Signer, subject, audience, kid string) (string, error) {
 	opts := &jose.SignerOptions{}
 	opts.WithHeader("kid", kid)
@@ -47,24 +49,23 @@ func jwtBearerToken(key crypto.Signer, subject, audience, kid string) (string, e
 
 func main() {
 	var (
-		fqdn    = flag.String("fqdn", "", "The FQDN of the ForgeOps deployment")
+		amurl   = flag.String("amurl", "", "The AM URL of the ForgeOps deployment")
 		thingID = flag.String("thingID", "4Y1SL65848Z411439", "The ID of the thing.")
 		clientID = flag.String("clientID", "", "The ID of the dynamically registered OAuth 2 client.")
 	)
 	flag.Parse()
 
-	if *fqdn == "" {
-		log.Fatal("FQDN must be provided")
+	if *amurl == "" {
+		log.Fatal("AM URL must be provided")
 	}
-	if *clientID == "" {
-		log.Fatal("clientID must be provided")
-	}
-	amURLString := "http://" + *fqdn + "/am"
+	//if *clientID == "" {
+	//	log.Fatal("clientID must be provided")
+	//}
 
 	store := secrets.Store{Path: "things.secrets"}
 	signer, _ := store.Signer(*thingID)
 	keyID, _ := thing.JWKThumbprint(signer)
-	signedJWT, err := jwtBearerToken(signer, *clientID, amURLString+"/oauth2/access_token", keyID)
+	signedJWT, err := jwtBearerToken(signer, *clientID, *amurl+"/oauth2/access_token", keyID)
 	if err != nil {
 		log.Fatal(err)
 	}
