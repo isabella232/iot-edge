@@ -14,28 +14,34 @@ skinparam sequence {
     ActorFontColor #062b8c
 }
 
-actor "Manufacturer" as man
+'actor "Manufacturer" as man
 actor "Thing" as thing
-participant "API Gateway" as ag
+participant "API Gateway (IG)" as ag
 participant "Access Management" as am
 participant "Identity Management" as idm
 
-man -> idm : create thing identity\nwith public key
+thing -> ag : /oauth2/register,\nsoftware_statement=JWT(jwks=thing keys)
+ag -> am: /authenticate,\ncallback=software_statement
+am -> am : Register Thing Node:\nvalidate software statement,\ngenerate ID and create identity
+am --> ag : sso token
+ag -> am : /things/*
+am --> ag : thing attributes\n_id (generated UUID)
+ag --> thing : client_id
 
-thing -> ag : /access_token,\ngrant_type=client_credentials,\nclient_assertion_type=jwt-bearer,\nclient_assertion=JWT(sub=thing ID)
+thing -> ag : /oauth2/access_token,\ngrant_type=client_credentials,\nclient_assertion_type=jwt-bearer,\nclient_assertion=JWT(sub=client_id)
 ag -> am: /authenticate,\ncallback=client_assertion
-am -> am : validate assertion in\ncustom or scripted node
+am -> am : Authenticate Thing Node:\nvalidate assertion
 am --> ag : sso token
 ag -> am : /things/*?_action=get_access_token
 am -> am : issue token based on\nclient=forgerock-iot-oauth2-client,\nissuer=forgerock-iot-jwt-issuer
 am --> ag : access token
 ag --> thing : access token
 
-thing -> ag : /thing,\nauth=access_token
-ag -> idm: /info/login,\nauth=access_token
-idm -> ag: FR id of Thing
-ag -> idm : /managed/thing///id//,\nauth=access_token
-idm --> ag : attributes
-ag --> thing : attributes
+'thing -> ag : /thing,\nauth=access_token
+'ag -> idm: /info/login,\nauth=access_token
+'idm -> ag: FR id of Thing
+'ag -> idm : /managed/thing///id//,\nauth=access_token
+'idm --> ag : attributes
+'ag --> thing : attributes
 
 @enduml
