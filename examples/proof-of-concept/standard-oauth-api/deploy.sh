@@ -18,7 +18,7 @@ set -e
 #
 
 FORGEOPS_DIR=$(PWD)/tmp/forgeops
-SCRIPTS_DIR=$(PWD)/scripts
+SCRIPTS_DIR=$(PWD)/forgeops/scripts
 CUSTOM_OVERLAY_DIR=$(PWD)/forgeops/overlay
 CONFIG_PROFILE=cdk
 

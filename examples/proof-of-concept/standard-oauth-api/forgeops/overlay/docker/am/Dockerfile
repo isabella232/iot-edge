@@ -1,5 +1,5 @@
 # Platform integration tested AM docker image:
-FROM gcr.io/forgerock-io/am-base/pull-requests:7.2.0-PR-16525-2-841d3f90958aa64d9f916481eb27090007dd29c2
+FROM gcr.io/forgerock-io/am-base/pull-requests:7.2.0-PR-16525-4-25eba07199dabfe69cdcb5393a6e2a4f3b7dcc71
 
 USER root
 
